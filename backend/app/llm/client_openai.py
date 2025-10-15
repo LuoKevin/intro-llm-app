@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Final
+from typing import Final, Iterator
 from openai import OpenAI
 from app.core.config import settings
 
@@ -20,3 +20,26 @@ def complete(prompt: str) -> str:
     )
 
     return resp.choices[0].message.content or ""
+
+def stream_completion(prompt: str) -> Iterator[str]:
+    #Yields small text deltas from OpenAI as they arrive
+
+    stream = _client.chat.completions.create(
+        stream=True,
+        model=_MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.2,
+    )
+    for chunk in stream:
+        try:
+            delta = chunk.choices[0].delta
+            piece = getattr(delta, "content", None)
+            if piece:
+                yield piece
+        except Exception:
+            pass
+
+    
